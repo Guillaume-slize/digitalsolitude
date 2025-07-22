@@ -1,0 +1,13 @@
+{
+  "name": "digitalsolitude",
+  "version": "1.0.0",
+  "description": "a website for one person only",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "solo": "./run.sh"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

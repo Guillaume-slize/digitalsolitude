@@ -1,0 +1,301 @@
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+let visitors = 0;
+
+// Track visitors
+app.use((req, res, next) => {
+  visitors++;
+  console.log(`👤 Visitor #${visitors} has arrived`);
+  
+  // If more than one person visits, the website disappears
+  if (visitors > 1) {
+    console.log('💫 Too many people. The website cannot handle it.');
+    console.log('🌫️ Disappearing...');
+    
+    // Send a final message before disappearing
+    res.status(503).send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>digitalsolitude → disappearing</title>
+          <style>
+            body { 
+              background: #fff; 
+              color: #000; 
+              font-family: 'Courier New', monospace; 
+              font-size: 14px;
+              line-height: 1.4;
+              padding: 20px;
+              margin: 0;
+              animation: fadeOut 2s ease-out;
+            }
+            @keyframes fadeOut {
+              0% { opacity: 1; transform: scale(1); }
+              100% { opacity: 0; transform: scale(0.98); }
+            }
+            .ascii {
+              white-space: pre;
+              font-family: monospace;
+              font-size: 10px;
+              margin: 20px 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="ascii">
+    ╭─────────────────────────────────────╮
+    │         CAPACITY EXCEEDED           │
+    │                                     │
+    │  > two presences detected           │
+    │  > solitude compromised             │
+    │  > gracefully disappearing...       │
+    │                                     │
+    │  the website needs to be alone      │
+    │  to exist properly                  │
+    │                                     │
+    │  recreating in 3 seconds...         │
+    ╰─────────────────────────────────────╯
+          </div>
+          <p>───────────────────────────────────</p>
+          <p>digitalsolitude.exe is fading away</p>
+        </body>
+      </html>
+    `);
+    
+    // Disappear gracefully after 2 seconds
+    setTimeout(() => {
+      process.exit(0);
+    }, 2000);
+    
+    return;
+  }
+  
+  // Clean up when visitor leaves
+  req.on('close', () => {
+    visitors--;
+    console.log(`👋 Visitor left. ${visitors} remaining.`);
+  });
+  
+  next();
+});
+
+// The main website - only for one person
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>digitalsolitude</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            background: #ffffff;
+            color: #000000;
+            padding: 40px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+          }
+          
+          .header {
+            margin-bottom: 60px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 20px;
+          }
+          
+          h1 {
+            font-size: 24px;
+            font-weight: normal;
+            letter-spacing: -0.5px;
+            margin-bottom: 10px;
+          }
+          
+          .subtitle {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 20px;
+          }
+          
+          .ascii-art {
+            font-family: monospace;
+            font-size: 10px;
+            white-space: pre;
+            margin: 30px 0;
+            color: #333;
+          }
+          
+          .content {
+            margin: 40px 0;
+          }
+          
+          .content p {
+            margin-bottom: 20px;
+          }
+          
+          .explainer-box {
+            /* Gentle wave border */
+            padding: 25px;
+            margin: 30px 0;
+            background: #fafafa;
+            border-top: 2px solid #eee;
+            border-bottom: 2px solid #eee;
+            position: relative;
+          }
+          
+          .explainer-box::before,
+          .explainer-box::after {
+            content: '∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿';
+            position: absolute;
+            left: 0;
+            right: 0;
+            font-size: 8px;
+            color: #ddd;
+            text-align: center;
+            letter-spacing: 0px;
+            overflow: hidden;
+          }
+          
+          .explainer-box::before {
+            top: -4px;
+          }
+          
+          .explainer-box::after {
+            bottom: -4px;
+          }
+          
+          .explainer-box h3 {
+            font-size: 14px;
+            font-weight: normal;
+            margin-bottom: 15px;
+            color: #666;
+            letter-spacing: 0.3px;
+          }
+          
+          /* Breathing animation */
+          .breathe {
+            animation: breathe 4s ease-in-out infinite;
+          }
+          
+          @keyframes breathe {
+            0%, 100% { 
+              transform: scale(1); 
+              opacity: 0.9;
+            }
+            50% { 
+              transform: scale(1.015); 
+              opacity: 1;
+            }
+          }
+          
+          /* Gentle presence */
+          .presence {
+            animation: presence 6s ease-in-out infinite;
+          }
+          
+          @keyframes presence {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+          }
+          
+          .footer {
+            margin-top: 60px;
+            padding-top: 20px;
+            border-top: 1px solid #000;
+            font-size: 12px;
+            color: #999;
+          }
+          
+          a {
+            color: #000;
+            text-decoration: none;
+            border-bottom: 1px solid #000;
+          }
+          
+          a:hover {
+            background: #000;
+            color: #fff;
+          }
+          
+          @media (max-width: 600px) {
+            body { padding: 20px 15px; font-size: 14px; }
+            .ascii-art { font-size: 8px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>digitalsolitude</h1>
+          <div class="subtitle">a website for one person only</div>
+        </div>
+
+        <div class="ascii-art">
+     ╭─────────────────────────────────────╮
+     │                                     │
+     │          you are alone here         │
+     │                                     │
+     │        in this quiet moment         │
+     │       this space belongs to you     │
+     │                                     │
+     │           no one else               │
+     │          can see this               │
+     │                                     │
+     ╰─────────────────────────────────────╯
+        </div>
+
+        <div class="content">
+          <p >this website exists in this moment for you alone.</p>
+          
+          <p>no analytics track your movement<br>
+          no cookies remember your visit<br>
+          no database stores your presence</p>
+          
+          <p class="presence">you have created a temporary, private corner of the internet simply by being here.</p>
+          
+          <div class="explainer-box">
+            <h3>how this works</h3>
+            <p>this website can only hold one person at a time, like a favorite reading chair or a quiet bench in a garden.</p>
+            <p>if someone else tries to visit while you're here, the site will gently disappear and recreate itself in a few moments, ready for the next visitor who needs some digital solitude.</p>
+          </div>
+          
+          <p >stay as long as you need.</p>
+          
+          <p>the website will wait.</p>
+        </div>
+        
+        <div class="footer">
+          <p>built with intentional fragility • a meditation on digital solitude</p>
+          <p>concept & code: <a href="www.guillaumeslizewicz.com">Guillaume Slizewicz</a> • 2025</p>
+        </div>
+        
+        <script>
+          // Subtle cursor tracking (no data sent anywhere)
+          let mouseTrail = [];
+          document.addEventListener('mousemove', (e) => {
+            mouseTrail.push({x: e.clientX, y: e.clientY, time: Date.now()});
+            if (mouseTrail.length > 10) mouseTrail.shift();
+          });
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`🌐 digitalsolitude is running on port ${PORT}`);
+  console.log(`🔗 Visit: http://localhost:${PORT}`);
+  console.log(`⚠️  Capacity: 1 visitor maximum`);
+});
+
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n🌫️ digitalsolitude fading away...');
+  process.exit(0);
+});
