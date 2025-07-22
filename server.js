@@ -2,19 +2,39 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-let visitors = 0;
+let activeVisitors = new Map();
+
+// Heartbeat endpoint
+app.post('/heartbeat', (req, res) => {
+  const visitorId = req.ip + req.headers['user-agent'];
+  activeVisitors.set(visitorId, Date.now());
+  res.json({ status: 'alive' });
+});
+
+// Clean up inactive visitors every 10 seconds
+setInterval(() => {
+  const now = Date.now();
+  for (const [visitorId, lastSeen] of activeVisitors.entries()) {
+    if (now - lastSeen > 10000) { // 10 seconds without heartbeat = gone
+      activeVisitors.delete(visitorId);
+      console.log(`👋 Visitor ${visitorId.slice(0, 10)}... left`);
+    }
+  }
+}, 5000);
 
 // Track visitors
 app.use((req, res, next) => {
-  visitors++;
-  console.log(`👤 Visitor #${visitors} has arrived`);
+  const visitorId = req.ip + req.headers['user-agent'];
   
-  // If more than one person visits, the website disappears
-  if (visitors > 1) {
-    console.log('💫 Too many people. The website cannot handle it.');
-    console.log('🌫️ Disappearing...');
+  console.log(`👤 Visitor checking in from ${req.ip}`);
+  console.log(`👥 Currently active visitors: ${activeVisitors.size}`);
+  
+  // If someone else is currently active, disappear
+  if (activeVisitors.size > 0 && !activeVisitors.has(visitorId)) {
+    console.log('💫 Another soul is already here. Disappearing...');
+    console.log('🌫️ Fading away...');
     
-    // Send a final message before disappearing
+    // Send disappearance message
     res.status(503).send(`
       <!DOCTYPE html>
       <html>
@@ -46,14 +66,14 @@ app.use((req, res, next) => {
         <body>
           <div class="ascii">
     ╭─────────────────────────────────────╮
-    │         CAPACITY EXCEEDED           │
+    │         SOLITUDE OCCUPIED           │
     │                                     │
-    │  > two presences detected           │
-    │  > solitude compromised             │
+    │  > another presence detected        │
+    │  > this space is taken              │
     │  > gracefully disappearing...       │
     │                                     │
-    │  the website needs to be alone      │
-    │  to exist properly                  │
+    │  someone else is having their       │
+    │  quiet moment here                  │
     │                                     │
     │  recreating in 3 seconds...         │
     ╰─────────────────────────────────────╯
@@ -72,11 +92,8 @@ app.use((req, res, next) => {
     return;
   }
   
-  // Clean up when visitor leaves
-  req.on('close', () => {
-    visitors--;
-    console.log(`👋 Visitor left. ${visitors} remaining.`);
-  });
+  // Add this visitor as active
+  activeVisitors.set(visitorId, Date.now());
   
   next();
 });
@@ -250,7 +267,7 @@ app.get('/', (req, res) => {
         </div>
 
         <div class="content">
-          <p >this website exists in this moment for you alone.</p>
+          <p class="breathe">this website exists in this moment for you alone.</p>
           
           <p>no analytics track your movement<br>
           no cookies remember your visit<br>
@@ -264,7 +281,7 @@ app.get('/', (req, res) => {
             <p>if someone else tries to visit while you're here, the site will gently disappear and recreate itself in a few moments, ready for the next visitor who needs some digital solitude.</p>
           </div>
           
-          <p >stay as long as you need.</p>
+          <p class="breathe">stay as long as you need.</p>
           
           <p>the website will wait.</p>
         </div>
@@ -275,6 +292,27 @@ app.get('/', (req, res) => {
         </div>
         
         <script>
+          // Keep visitor alive while on page
+          function sendHeartbeat() {
+            fetch('/heartbeat', { method: 'POST' })
+              .catch(() => {}); // Ignore errors silently
+          }
+          
+          // Send heartbeat every 5 seconds while page is active
+          const heartbeat = setInterval(sendHeartbeat, 5000);
+          
+          // Stop heartbeat when page is hidden/closed
+          document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+              clearInterval(heartbeat);
+            }
+          });
+          
+          // Stop heartbeat when leaving page
+          window.addEventListener('beforeunload', () => {
+            clearInterval(heartbeat);
+          });
+          
           // Subtle cursor tracking (no data sent anywhere)
           let mouseTrail = [];
           document.addEventListener('mousemove', (e) => {
