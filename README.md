@@ -10,8 +10,6 @@ digitalsolitude explores the paradox of solitude in our hyperconnected age. the 
 
 when a second visitor attempts to access the site, it disappears. the server fades away. the experience dissolves.
 
-this is not a bug. this is the art.
-
 ---
 
 ## installation
@@ -52,15 +50,8 @@ when you visit alone, the entire website is yours. when someone else tries to jo
 
 ## credits
 
-concept: [your_name]
+concept: [Guillaume Slizewicz]
 year: 2025
 medium: fragile web infrastructure
 duration: ephemeral
 
----
-
-## license
-
-this work is in the public domain.
-copy it. break it. make it your own.
-the internet needs more fragile things.
