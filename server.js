@@ -22,8 +22,13 @@ setInterval(() => {
   }
 }, 5000);
 
-// Track visitors
+// Track visitors (skip heartbeat endpoint)
 app.use((req, res, next) => {
+  // Skip visitor tracking for heartbeat
+  if (req.path === '/heartbeat') {
+    return next();
+  }
+  
   const visitorId = req.ip + req.headers['user-agent'];
   
   console.log(`👤 Visitor checking in from ${req.ip}`);
@@ -86,7 +91,7 @@ app.use((req, res, next) => {
     
     // Disappear gracefully after 2 seconds
     setTimeout(() => {
-      process.exit(0);
+      process.kill(process.pid, 'SIGTERM');
     }, 2000);
     
     return;
@@ -333,6 +338,11 @@ app.listen(PORT, () => {
 });
 
 // Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('\n💫 Received SIGTERM - digitalsolitude fading away...');
+  process.exit(0);
+});
+
 process.on('SIGINT', () => {
   console.log('\n🌫️ digitalsolitude fading away...');
   process.exit(0);
