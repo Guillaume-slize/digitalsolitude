@@ -73,11 +73,6 @@ app.use((req, res, next) => {
             }
             .message {
               margin: 40px 0;
-              animation: breathe 4s ease-in-out infinite;
-            }
-            @keyframes breathe {
-              0%, 100% { opacity: 0.9; }
-              50% { opacity: 1; }
             }
             .footer {
               margin-top: 60px;
@@ -97,7 +92,7 @@ app.use((req, res, next) => {
           <div class="message">
             <p>this digital space is currently inhabited.</p>
             
-            <p>someone else is having their quiet moment here.</p>
+            <p>someone else is having their quiet time here.</p>
             
             <p>come back in a moment.</p>
           </div>
@@ -211,7 +206,6 @@ app.get('/', (req, res) => {
             font-size: 14px;
             font-weight: normal;
             margin-bottom: 15px;
-            color: #666;
             letter-spacing: 0.3px;
           }
           
@@ -287,7 +281,7 @@ app.get('/', (req, res) => {
         </div>
 
         <div class="content">
-          <p class="breathe">this website exists in this moment for you alone.</p>
+          <p >this website exists in this moment for you alone.</p>
           
           <p>no analytics track your movement<br>
           no cookies remember your visit<br>
@@ -298,10 +292,10 @@ app.get('/', (req, res) => {
           <div class="explainer-box">
             <h3>how this works</h3>
             <p>this website can only hold one person at a time, like a favorite reading chair or a quiet bench in a garden.</p>
-            <p>if someone else tries to visit while you're here, the site will gently disappear and recreate itself in a few moments, ready for the next visitor who needs some digital solitude.</p>
+            <p>if someone else tries to visit while you're here, they will see a gentle message letting them know the space is occupied, and they can return when you've finished your quiet moment.</p>
           </div>
           
-          <p class="breathe">stay as long as you need.</p>
+          <p >stay as long as you need.</p>
           
           <p>the website will wait.</p>
         </div>
