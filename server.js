@@ -162,7 +162,7 @@ app.get('/', (req, res) => {
           
           .ascii-art {
             font-family: monospace;
-            font-size: 10px;
+            font-size: 20px;
             white-space: pre;
             margin: 30px 0;
             color: #333;
@@ -173,7 +173,8 @@ app.get('/', (req, res) => {
           }
           
           .content p {
-            margin-bottom: 20px;
+            margin-bottom: 10px;
+
           }
           
           .explainer-box {
@@ -189,7 +190,7 @@ app.get('/', (req, res) => {
           .explainer-box::before,
           .explainer-box::after {
             content: '∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿';
-            position: absolute;
+            position: relative;
             left: 0;
             right: 0;
             font-size: 8px;
@@ -200,11 +201,11 @@ app.get('/', (req, res) => {
           }
           
           .explainer-box::before {
-            top: -4px;
+            top: 4px;
           }
           
           .explainer-box::after {
-            bottom: -4px;
+            bottom: 4px;
           }
           
           .explainer-box h3 {
@@ -250,6 +251,60 @@ app.get('/', (req, res) => {
             body { padding: 20px 15px; font-size: 14px; }
             .ascii-art { font-size: 8px; }
           }
+        /* layered ASCII animation */
+        .ascii-stack      { position: relative; display: inline-block; }
+        .ascii-stack .ascii {
+          position: absolute;             /* pile the layers */
+          top: 0; left: 0; margin: 0;
+          font-family: "Courier New", monospace;
+          white-space: pre;
+          animation: pulse 8s ease-in-out infinite;
+          will-change: opacity, filter;   /* helps to smooth the first seconds */
+          transform: translateZ(0);       /* forces GPU compositing */
+        }
+        .ascii.d0 { filter: blur(0   ); opacity: 1; animation-delay: 0s; }
+        .ascii.d1 { filter: blur(0.4px); opacity: .90; animation-delay: 1s; }
+        .ascii.d2 { filter: blur(0.8px); opacity: .85; animation-delay: 2s; }
+        .ascii.d3 { filter: blur(1.2px); opacity: .80; animation-delay: 3s; }
+        .ascii.d4 { filter: blur(1.6px); opacity: .75; animation-delay: 4s; }
+        .ascii-stack .ascii:first-child{
+          position: static;         /* restores height */
+          visibility: hidden;       /* removes it from view */
+          animation: none;          /* stops the pulse */
+        }
+
+        @keyframes pulse {
+          0%,100% { opacity: .35; }
+          50%     { opacity: 1;  }
+        }
+          /* stripe mask: each layer shows one vertical character stripe in five */
+@supports (mask-image: linear-gradient(black, black)) or
+          (-webkit-mask-image: linear-gradient(black, black)) {
+
+  :root{
+    --mask: repeating-linear-gradient(
+        90deg,
+        black 0 1ch,
+        transparent 1ch 5ch
+    );
+  }
+
+  .ascii.d0,
+  .ascii.d1,
+  .ascii.d2,
+  .ascii.d3,
+  .ascii.d4 {
+    mask-image: var(--mask);
+    -webkit-mask-image: var(--mask);
+  }
+
+  .ascii.d0 { mask-position:   0ch 0; -webkit-mask-position:   0ch 0; }
+  .ascii.d1 { mask-position:  -1ch 0; -webkit-mask-position:  -1ch 0; }
+  .ascii.d2 { mask-position:  -2ch 0; -webkit-mask-position:  -2ch 0; }
+  .ascii.d3 { mask-position:  -3ch 0; -webkit-mask-position:  -3ch 0; }
+  .ascii.d4 { mask-position:  -4ch 0; -webkit-mask-position:  -4ch 0; }
+}
+
         </style>
       </head>
       <body>
@@ -259,45 +314,115 @@ app.get('/', (req, res) => {
         </div>
         <div id="failure-notice" style="display: none; margin: 20px 0; padding: 20px; border: 1px solid #000; background: #f5f5f5; text-align: center;">
           <h3 style="margin: 0 0 10px 0; font-size: 16px; font-weight: normal;">too many people</h3>
-          <p style="margin: 0; font-size: 14px; color: #666;">there are more than one person on this website. that's too many.
+          <p style="margin: 0; font-size: 14px; color: #666;">Only one person can use this site. If more than one user connects, it fails for everyone.
           <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">please try again later.</p>
         </div>
         <div class="content">
 
           <div class="ascii-art">
-     ╭─────────────────────────────────────╮
-     │                                     │
-     │          you are alone here         │
-     │                                     │
-     │        in this quiet moment         │
-     │       this space belongs to you     │
-     │                                     │
-     │           no one else               │
-     │          can see this               │
-     │                                     │
-     ╰─────────────────────────────────────╯
+          <div class="ascii-stack">
+<pre class="ascii d0">╭─────────────────────────────────────╮
+│         this website exists         │
+│            in this moment           │
+│            for you alone            │
+│                                     │
+│          no analytics track         │
+│            your movement            │
+│         no cookies remember         │
+│              your visit             │
+│          no database stores         │
+│            your presence            │
+│                                     │
+│          you have created a         │
+│          temporary, private         │
+│        corner of the internet       │
+│        simply by being here.        │
+╰─────────────────────────────────────╯</pre>
+
+<pre class="ascii d1">╭─────────────────────────────────────╮
+│         this website exists         │
+│            in this moment           │
+│            for you alone            │
+│                                     │
+│          no analytics track         │
+│            your movement            │
+│         no cookies remember         │
+│              your visit             │
+│          no database stores         │
+│            your presence            │
+│                                     │
+│          you have created a         │
+│          temporary, private         │
+│        corner of the internet       │
+│        simply by being here.        │
+╰─────────────────────────────────────╯</pre>
+
+<pre class="ascii d2">╭─────────────────────────────────────╮
+│         this website exists         │
+│            in this moment           │
+│            for you alone            │
+│                                     │
+│          no analytics track         │
+│            your movement            │
+│         no cookies remember         │
+│              your visit             │
+│          no database stores         │
+│            your presence            │
+│                                     │
+│          you have created a         │
+│          temporary, private         │
+│        corner of the internet       │
+│        simply by being here.        │
+╰─────────────────────────────────────╯</pre>
+
+<pre class="ascii d3">╭─────────────────────────────────────╮
+│         this website exists         │
+│            in this moment           │
+│            for you alone            │
+│                                     │
+│          no analytics track         │
+│            your movement            │
+│         no cookies remember         │
+│              your visit             │
+│          no database stores         │
+│            your presence            │
+│                                     │
+│          you have created a         │
+│          temporary, private         │
+│        corner of the internet       │
+│        simply by being here.        │
+╰─────────────────────────────────────╯</pre>
+
+<pre class="ascii d4">╭─────────────────────────────────────╮
+│         this website exists         │
+│            in this moment           │
+│            for you alone            │
+│                                     │
+│          no analytics track         │
+│            your movement            │
+│         no cookies remember         │
+│              your visit             │
+│          no database stores         │
+│            your presence            │
+│                                     │
+│          you have created a         │
+│          temporary, private         │
+│        corner of the internet       │
+│        simply by being here.        │
+╰─────────────────────────────────────╯</pre>
+</div>
         </div>
 
         
 
-        
-          <p >this website exists in this moment for you alone.</p>
-          
-          <p>no analytics track your movement<br>
-          no cookies remember your visit<br>
-          no database stores your presence</p>
-          
-          <p class="presence">you have created a temporary, private corner of the internet simply by being here.</p>
-          
+
           <div class="explainer-box">
             <h3>how this works</h3>
             <p>this website can only be visible per person at a time.</p>
             <p>if someone else tries to visit while you're here, both of you will see a failure message. the website cannot function when there are multiple people. it needs complete solitude to exist.</p>
           </div>
           
-          <p>stay as long as you need.</p>
-          
-          <p>the website will wait.</p>
+
         </div>
         
         <div class="footer">
