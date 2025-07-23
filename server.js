@@ -259,8 +259,8 @@ app.get('/', (req, res) => {
         </div>
         <div id="failure-notice" style="display: none; margin: 20px 0; padding: 20px; border: 1px solid #000; background: #f5f5f5; text-align: center;">
           <h3 style="margin: 0 0 10px 0; font-size: 16px; font-weight: normal;">too many people</h3>
-          <p style="margin: 0; font-size: 14px; color: #666;">there are <span id="people-count">2</span> people on this website.<br>that's one too many.</p>
-          <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">please try again when you're alone.</p>
+          <p style="margin: 0; font-size: 14px; color: #666;">there are more than one person on this website. that's too many.
+          <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">please try again later.</p>
         </div>
         <div class="content">
 
@@ -292,7 +292,7 @@ app.get('/', (req, res) => {
           <div class="explainer-box">
             <h3>how this works</h3>
             <p>this website can only be visible per person at a time.</p>
-            <p>if someone else tries to visit while you're here, both of you will see a failure message. the website cannot function when there are multiple people—it needs complete solitude to exist.</p>
+            <p>if someone else tries to visit while you're here, both of you will see a failure message. the website cannot function when there are multiple people. it needs complete solitude to exist.</p>
           </div>
           
           <p>stay as long as you need.</p>
