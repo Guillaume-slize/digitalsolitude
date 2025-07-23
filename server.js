@@ -248,8 +248,8 @@ app.get('/', (req, res) => {
           }
           
           @media (max-width: 600px) {
-            body { padding: 20px 15px; font-size: 14px; }
-            .ascii-art { font-size: 8px; }
+            body { padding: 5px 5px; font-size: 20px; }
+            .ascii-art { font-size: 20px; }
           }
         /* layered ASCII animation */
         .ascii-stack      { position: relative; display: inline-block; }
@@ -429,8 +429,8 @@ app.get('/', (req, res) => {
         </div>
         
         <div class="footer">
-          <p>built with intentional fragility</p>
-          <p>by <a href="https://www.guillaumeslizewicz.com">Guillaume Slizewicz</a> • 2025</p>
+          <p></p>
+          <p>built by <a href="https://www.guillaumeslizewicz.com">Guillaume Slizewicz</a> • 2025</p>
         </div>
         
         <script>
