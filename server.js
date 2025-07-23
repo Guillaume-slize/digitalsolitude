@@ -429,8 +429,8 @@ app.get('/', (req, res) => {
         </div>
         
         <div class="footer">
-          <p>built with intentional fragility • a meditation on digital solitude</p>
-          <p>concept & code: <a href="https://www.guillaumeslizewicz.com">Guillaume Slizewicz</a> • 2025</p>
+          <p>built with intentional fragility</p>
+          <p>by <a href="https://www.guillaumeslizewicz.com">Guillaume Slizewicz</a> • 2025</p>
         </div>
         
         <script>
