@@ -133,6 +133,7 @@ app.get('/', (req, res) => {
           body {
             font-family: 'Courier New', monospace;
             font-size: 15px;
+            text-align: center;
             line-height: 1.6;
             background: #ffffff;
             color: #000000;
@@ -163,7 +164,6 @@ app.get('/', (req, res) => {
           .ascii-art {
             font-family: monospace;
             font-size: 20px;
-            white-space: pre;
             margin: 30px 0;
             color: #333;
           }
@@ -262,11 +262,11 @@ app.get('/', (req, res) => {
           will-change: opacity, filter;   /* helps to smooth the first seconds */
           transform: translateZ(0);       /* forces GPU compositing */
         }
-        .ascii.d0 { filter: blur(0   ); animation-delay: 0s; }
-        .ascii.d1 { filter: blur(0.4px); opacity: .90; animation-delay: 1s; }
-        .ascii.d2 { filter: blur(0.8px); opacity: .85; animation-delay: 2s; }
-        .ascii.d3 { filter: blur(1.2px); opacity: .80; animation-delay: 3s; }
-        .ascii.d4 { filter: blur(1.6px); opacity: .75); animation-delay: 4s; }
+        .ascii.d0 {  mask-image: linear-gradient(50deg, transparent 0%, #000 30%, #000 70%, transparent 100%); filter: blur(0   ); animation-delay: 0s; mix-blend-mode: multiply; }
+        .ascii.d1 { mask-image: linear-gradient(120deg, transparent 0%, #000 30%, #000 70%, transparent 100%); filter: blur(0.4px); opacity: .90; animation-delay: 1s;mix-blend-mode: screen;  }
+        .ascii.d2 { mask-image: linear-gradient(100deg, transparent 0%, #000 20%, #000 80%, transparent 100%); filter: blur(0.8px); opacity: .85; animation-delay: 2s; }
+        .ascii.d3 {  mask-image: radial-gradient(circle at 70% 30%, #000 60%, transparent 100%); filter: blur(1.2px); opacity: .80; animation-delay: 3s; }
+        .ascii.d4 { mask-image: linear-gradient(to right, transparent 0%, #000 15%, #000 85%, transparent 100%); filter: blur(1.6px); opacity: .75; animation-delay: 4s; }
         .ascii-stack .ascii:first-child{
           position: static;         /* restores height */
           visibility: hidden;       /* removes it from view */
@@ -299,12 +299,18 @@ app.get('/', (req, res) => {
 │            in this moment           │
 │            for you alone            │
 │                                     │
-│          no analytics track         │
-│            your movement            │
+│             \'/     \'/             │
+│            - @ -   - @ -            │
+│             /.\     /.\             │
+│                                     │
 │         no cookies remember         │
 │              your visit             │
 │          no database stores         │
 │            your presence            │
+│                                     │
+│             \'/     \'/             │
+│            - @ -   - @ -            │
+│             /.\     /.\             │
 │                                     │
 │          you have created a         │
 │          temporary, private         │
@@ -317,12 +323,18 @@ app.get('/', (req, res) => {
 │            in this moment           │
 │            for you alone            │
 │                                     │
-│          no analytics track         │
-│            your movement            │
+│             \'/     \'/             │
+│            - @ -   - @ -            │
+│             /.\     /.\             │
+│                                     │
 │         no cookies remember         │
 │              your visit             │
 │          no database stores         │
 │            your presence            │
+│                                     │
+│             \'/     \'/             │
+│            - @ -   - @ -            │
+│             /.\     /.\             │
 │                                     │
 │          you have created a         │
 │          temporary, private         │
@@ -335,12 +347,18 @@ app.get('/', (req, res) => {
 │            in this moment           │
 │            for you alone            │
 │                                     │
-│          no analytics track         │
-│            your movement            │
+│             \'/     \'/             │
+│            - @ -   - @ -            │
+│             /.\     /.\             │
+│                                     │
 │         no cookies remember         │
 │              your visit             │
 │          no database stores         │
 │            your presence            │
+│                                     │
+│             \'/     \'/             │
+│            - @ -   - @ -            │
+│             /.\     /.\             │
 │                                     │
 │          you have created a         │
 │          temporary, private         │
@@ -353,12 +371,18 @@ app.get('/', (req, res) => {
 │            in this moment           │
 │            for you alone            │
 │                                     │
-│          no analytics track         │
-│            your movement            │
+│             \'/     \'/             │
+│            - @ -   - @ -            │
+│             /.\     /.\             │
+│                                     │
 │         no cookies remember         │
 │              your visit             │
 │          no database stores         │
 │            your presence            │
+│                                     │
+│             \'/     \'/             │
+│            - @ -   - @ -            │
+│             /.\     /.\             │
 │                                     │
 │          you have created a         │
 │          temporary, private         │
@@ -371,12 +395,18 @@ app.get('/', (req, res) => {
 │            in this moment           │
 │            for you alone            │
 │                                     │
-│          no analytics track         │
-│            your movement            │
+│             \'/     \'/             │
+│            - @ -   - @ -            │
+│             /.\     /.\             │
+│                                     │
 │         no cookies remember         │
 │              your visit             │
 │          no database stores         │
 │            your presence            │
+│                                     │
+│             \'/     \'/             │
+│            - @ -   - @ -            │
+│             /.\     /.\             │
 │                                     │
 │          you have created a         │
 │          temporary, private         │
