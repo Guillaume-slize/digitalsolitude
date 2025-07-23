@@ -257,7 +257,11 @@ app.get('/', (req, res) => {
           <h1>digitalsolitude</h1>
           <div class="subtitle">a website for one person only</div>
         </div>
-
+        <div id="failure-notice" style="display: none; margin: 20px 0; padding: 20px; border: 1px solid #000; background: #f5f5f5; text-align: center;">
+          <h3 style="margin: 0 0 10px 0; font-size: 16px; font-weight: normal;">too many people</h3>
+          <p style="margin: 0; font-size: 14px; color: #666;">there are <span id="people-count">2</span> people on this website.<br>that's one too many.</p>
+          <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">please try again when you're alone.</p>
+        </div>
         <div class="content">
 
           <div class="ascii-art">
@@ -274,11 +278,7 @@ app.get('/', (req, res) => {
      ╰─────────────────────────────────────╯
         </div>
 
-        <div id="failure-notice" style="display: none; margin: 20px 0; padding: 20px; border: 1px solid #000; background: #f5f5f5; text-align: center;">
-          <h3 style="margin: 0 0 10px 0; font-size: 16px; font-weight: normal;">too many people</h3>
-          <p style="margin: 0; font-size: 14px; color: #666;">there are <span id="people-count">2</span> people on this website.<br>that's one too many.</p>
-          <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">please try again when you're alone.</p>
-        </div>
+        
 
         
           <p >this website exists in this moment for you alone.</p>
