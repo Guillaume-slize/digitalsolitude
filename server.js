@@ -248,8 +248,8 @@ app.get('/', (req, res) => {
           }
           
           @media (max-width: 600px) {
-            body { padding: 5px 5px; font-size: 18px; }
-            .ascii-art { font-size: 18px; }
+            body { padding: 5px 5px; font-size: 16px; }
+            .ascii-art { font-size: 16px; }
           }
         /* layered ASCII animation */
         .ascii-stack      { position: relative; display: inline-block; }
