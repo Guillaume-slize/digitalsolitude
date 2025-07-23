@@ -4,6 +4,15 @@ const PORT = process.env.PORT || 3000;
 
 let activeVisitors = new Map();
 
+// Health check endpoint (doesn't count as visitor)
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    activeVisitors: activeVisitors.size 
+  });
+});
+
 // Heartbeat endpoint
 app.post('/heartbeat', (req, res) => {
   const visitorId = req.ip + req.headers['user-agent'];
@@ -22,10 +31,10 @@ setInterval(() => {
   }
 }, 5000);
 
-// Track visitors (skip heartbeat endpoint)
+// Track visitors (skip health check and heartbeat)
 app.use((req, res, next) => {
-  // Skip visitor tracking for heartbeat
-  if (req.path === '/heartbeat') {
+  // Skip visitor tracking for system endpoints
+  if (req.path === '/health' || req.path === '/heartbeat') {
     return next();
   }
   
@@ -91,7 +100,7 @@ app.use((req, res, next) => {
     
     // Disappear gracefully after 2 seconds
     setTimeout(() => {
-      process.kill(process.pid, 'SIGTERM');
+      process.exit(0);
     }, 2000);
     
     return;
@@ -338,11 +347,6 @@ app.listen(PORT, () => {
 });
 
 // Handle graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('\n💫 Received SIGTERM - digitalsolitude fading away...');
-  process.exit(0);
-});
-
 process.on('SIGINT', () => {
   console.log('\n🌫️ digitalsolitude fading away...');
   process.exit(0);
