@@ -2,57 +2,25 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-let activeVisitors = new Map();
-
-// Server-sent events for visitor tracking
-app.get('/events', (req, res) => {
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive'
-  });
-  
-  const visitorId = req.ip + req.headers['user-agent'];
-  
-  // Store this connection
-  activeVisitors.set(visitorId, { 
-    lastSeen: Date.now(), 
-    eventStream: res 
-  });
-  
-  console.log(`📡 Event stream connected. Active visitors: ${activeVisitors.size}`);
-  
-  req.on('close', () => {
-    activeVisitors.delete(visitorId);
-    console.log(`📡 Event stream closed. Active visitors: ${activeVisitors.size}`);
-  });
-});
+let activeVisitors = new Set();
 
 // Heartbeat endpoint
 app.post('/heartbeat', (req, res) => {
   const visitorId = req.ip + req.headers['user-agent'];
-  if (activeVisitors.has(visitorId)) {
-    activeVisitors.get(visitorId).lastSeen = Date.now();
-  }
+  activeVisitors.add(visitorId);
   res.json({ status: 'alive' });
 });
 
 // Clean up inactive visitors every 10 seconds
 setInterval(() => {
-  const now = Date.now();
-  
-  for (const [visitorId, visitor] of activeVisitors.entries()) {
-    if (now - visitor.lastSeen > 10000) { // 10 seconds without heartbeat = gone
-      activeVisitors.delete(visitorId);
-      console.log(`👋 Visitor ${visitorId.slice(0, 10)}... left`);
-    }
-  }
+  // For simplicity, we'll rely on heartbeats to keep visitors alive
+  // Visitors are removed when they stop sending heartbeats (page close)
 }, 5000);
 
 // Track visitors 
 app.use((req, res, next) => {
-  // Skip visitor tracking for heartbeat and events
-  if (req.path === '/heartbeat' || req.path === '/events') {
+  // Skip visitor tracking for heartbeat
+  if (req.path === '/heartbeat') {
     return next();
   }
   
@@ -61,8 +29,8 @@ app.use((req, res, next) => {
   console.log(`👥 Currently active: ${activeVisitors.size}`);
   
   // If there are already active visitors, show failure to everyone
-  if (activeVisitors.size > 0) {
-    console.log('💥 Too many people detected. Showing failure to everyone...');
+  if (activeVisitors.size >= 1 && !activeVisitors.has(visitorId)) {
+    console.log('💥 Too many people detected. Showing failure...');
     
     // Send failure message
     res.send(`
@@ -149,6 +117,9 @@ app.use((req, res, next) => {
     
     return;
   }
+  
+  // Add this visitor to active set
+  activeVisitors.add(visitorId);
   
   next();
 });
@@ -321,7 +292,7 @@ app.get('/', (req, res) => {
      ╰─────────────────────────────────────╯
         </div>
 
-        <div class="content">
+ <div class="content">
           <p >this website exists in this moment for you alone.</p>
           
           <p>no analytics track your movement<br>
@@ -347,9 +318,6 @@ app.get('/', (req, res) => {
         </div>
         
         <script>
-          // Connect to events stream (for heartbeat tracking)
-          const eventSource = new EventSource('/events');
-          
           // Keep visitor alive while on page
           function sendHeartbeat() {
             fetch('/heartbeat', { method: 'POST' })
@@ -363,14 +331,12 @@ app.get('/', (req, res) => {
           document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
               clearInterval(heartbeat);
-              eventSource.close();
             }
           });
           
           // Stop heartbeat when leaving page
           window.addEventListener('beforeunload', () => {
             clearInterval(heartbeat);
-            eventSource.close();
           });
           
           // Subtle cursor tracking (no data sent anywhere)
