@@ -262,11 +262,11 @@ app.get('/', (req, res) => {
           will-change: opacity, filter;   /* helps to smooth the first seconds */
           transform: translateZ(0);       /* forces GPU compositing */
         }
-        .ascii.d0 { filter: blur(0   ); opacity: 1; animation-delay: 0s; }
+        .ascii.d0 { filter: blur(0   ); animation-delay: 0s; }
         .ascii.d1 { filter: blur(0.4px); opacity: .90; animation-delay: 1s; }
         .ascii.d2 { filter: blur(0.8px); opacity: .85; animation-delay: 2s; }
         .ascii.d3 { filter: blur(1.2px); opacity: .80; animation-delay: 3s; }
-        .ascii.d4 { filter: blur(1.6px); opacity: .75; animation-delay: 4s; }
+        .ascii.d4 { filter: blur(1.6px); opacity: .75); animation-delay: 4s; }
         .ascii-stack .ascii:first-child{
           position: static;         /* restores height */
           visibility: hidden;       /* removes it from view */
@@ -277,34 +277,7 @@ app.get('/', (req, res) => {
           0%,100% { opacity: .35; }
           50%     { opacity: 1;  }
         }
-          /* stripe mask: each layer shows one vertical character stripe in five */
-@supports (mask-image: linear-gradient(black, black)) or
-          (-webkit-mask-image: linear-gradient(black, black)) {
-
-  :root{
-    --mask: repeating-linear-gradient(
-        90deg,
-        black 0 1ch,
-        transparent 1ch 5ch
-    );
-  }
-
-  .ascii.d0,
-  .ascii.d1,
-  .ascii.d2,
-  .ascii.d3,
-  .ascii.d4 {
-    mask-image: var(--mask);
-    -webkit-mask-image: var(--mask);
-  }
-
-  .ascii.d0 { mask-position:   0ch 0; -webkit-mask-position:   0ch 0; }
-  .ascii.d1 { mask-position:  -1ch 0; -webkit-mask-position:  -1ch 0; }
-  .ascii.d2 { mask-position:  -2ch 0; -webkit-mask-position:  -2ch 0; }
-  .ascii.d3 { mask-position:  -3ch 0; -webkit-mask-position:  -3ch 0; }
-  .ascii.d4 { mask-position:  -4ch 0; -webkit-mask-position:  -4ch 0; }
-}
-
+          
         </style>
       </head>
       <body>
