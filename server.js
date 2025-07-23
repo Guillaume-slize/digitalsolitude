@@ -263,10 +263,10 @@ app.get('/', (req, res) => {
           transform: translateZ(0);       /* forces GPU compositing */
         }
         .ascii.d0 {  mask-image: linear-gradient(50deg, transparent 0%, #000 30%, #000 70%, transparent 100%); filter: blur(0   ); animation-delay: 0s; mix-blend-mode: multiply; }
-        .ascii.d1 { mask-image: linear-gradient(120deg, transparent 0%, #000 30%, #000 70%, transparent 100%); filter: blur(0.4px); opacity: .90; animation-delay: 1s;mix-blend-mode: screen;  }
-        .ascii.d2 { mask-image: linear-gradient(100deg, transparent 0%, #000 20%, #000 80%, transparent 100%); filter: blur(0.8px); opacity: .85; animation-delay: 2s; }
-        .ascii.d3 {  mask-image: radial-gradient(circle at 70% 30%, #000 60%, transparent 100%); filter: blur(1.2px); opacity: .80; animation-delay: 3s; }
-        .ascii.d4 { mask-image: linear-gradient(to right, transparent 0%, #000 15%, #000 85%, transparent 100%); filter: blur(1.6px); opacity: .75; animation-delay: 4s; }
+        .ascii.d1 { mask-image: linear-gradient(120deg, transparent 0%, #000 30%, #000 70%, transparent 100%); filter: blur(0.2px); opacity: .90; animation-delay: 1s;mix-blend-mode: screen;  }
+        .ascii.d2 { mask-image: linear-gradient(100deg, transparent 0%, #000 20%, #000 80%, transparent 100%); filter: blur(0.4px); opacity: .85; animation-delay: 2s; }
+        .ascii.d3 {  mask-image: radial-gradient(circle at 70% 30%, #000 60%, transparent 100%); filter: blur(0.6px); opacity: .80; animation-delay: 3s; }
+        .ascii.d4 { mask-image: linear-gradient(to right, transparent 0%, #000 15%, #000 85%, transparent 100%); filter: blur(1.2px); opacity: .75; animation-delay: 4s; }
         .ascii-stack .ascii:first-child{
           position: static;         /* restores height */
           visibility: hidden;       /* removes it from view */
