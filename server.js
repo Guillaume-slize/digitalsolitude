@@ -258,7 +258,9 @@ app.get('/', (req, res) => {
           <div class="subtitle">a website for one person only</div>
         </div>
 
-        <div class="ascii-art">
+        <div class="content">
+
+          <div class="ascii-art">
      ╭─────────────────────────────────────╮
      │                                     │
      │          you are alone here         │
@@ -278,7 +280,7 @@ app.get('/', (req, res) => {
           <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">please try again when you're alone.</p>
         </div>
 
-        <div class="content">
+        
           <p >this website exists in this moment for you alone.</p>
           
           <p>no analytics track your movement<br>
