@@ -4,111 +4,107 @@ const PORT = process.env.PORT || 3000;
 
 let activeVisitors = new Map();
 
+// Server-sent events for real-time updates
+app.get('/events', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+  
+  const visitorId = req.ip + req.headers['user-agent'];
+  
+  // Store this connection
+  activeVisitors.set(visitorId, { 
+    lastSeen: Date.now(), 
+    eventStream: res 
+  });
+  
+  // Send initial state
+  res.write(`data: ${JSON.stringify({ 
+    type: 'status', 
+    count: activeVisitors.size 
+  })}\n\n`);
+  
+  // If there are now 2+ people, everyone fails
+  if (activeVisitors.size >= 2) {
+    broadcastFailure();
+  }
+  
+  req.on('close', () => {
+    activeVisitors.delete(visitorId);
+    broadcastUpdate();
+  });
+});
+
+// Broadcast failure to everyone
+function broadcastFailure() {
+  const message = `data: ${JSON.stringify({ 
+    type: 'too_many_people', 
+    count: activeVisitors.size 
+  })}\n\n`;
+  
+  for (const [visitorId, visitor] of activeVisitors.entries()) {
+    try {
+      visitor.eventStream.write(message);
+    } catch (e) {
+      activeVisitors.delete(visitorId);
+    }
+  }
+}
+
+// Broadcast updates to all active visitors
+function broadcastUpdate() {
+  const message = `data: ${JSON.stringify({ 
+    type: 'count_update', 
+    count: activeVisitors.size 
+  })}\n\n`;
+  
+  for (const [visitorId, visitor] of activeVisitors.entries()) {
+    try {
+      visitor.eventStream.write(message);
+    } catch (e) {
+      activeVisitors.delete(visitorId);
+    }
+  }
+}
+
 // Heartbeat endpoint
 app.post('/heartbeat', (req, res) => {
   const visitorId = req.ip + req.headers['user-agent'];
-  activeVisitors.set(visitorId, Date.now());
+  if (activeVisitors.has(visitorId)) {
+    activeVisitors.get(visitorId).lastSeen = Date.now();
+  }
   res.json({ status: 'alive' });
 });
 
 // Clean up inactive visitors every 10 seconds
 setInterval(() => {
   const now = Date.now();
-  for (const [visitorId, lastSeen] of activeVisitors.entries()) {
-    if (now - lastSeen > 10000) { // 10 seconds without heartbeat = gone
+  let changed = false;
+  
+  for (const [visitorId, visitor] of activeVisitors.entries()) {
+    if (now - visitor.lastSeen > 10000) { // 10 seconds without heartbeat = gone
       activeVisitors.delete(visitorId);
       console.log(`👋 Visitor ${visitorId.slice(0, 10)}... left`);
+      changed = true;
     }
+  }
+  
+  if (changed) {
+    broadcastUpdate();
   }
 }, 5000);
 
 // Track visitors 
 app.use((req, res, next) => {
-  // Skip visitor tracking for heartbeat only
-  if (req.path === '/heartbeat') {
+  // Skip visitor tracking for heartbeat and events
+  if (req.path === '/heartbeat' || req.path === '/events') {
     return next();
   }
   
   const visitorId = req.ip + req.headers['user-agent'];
-  
   console.log(`👤 Visitor checking in from ${req.ip}`);
-  console.log(`👥 Currently active visitors: ${activeVisitors.size}`);
-  
-  // If someone else is currently active, show graceful lock
-  if (activeVisitors.size > 0 && !activeVisitors.has(visitorId)) {
-    console.log('🔒 Space is occupied. Showing lock message...');
-    
-    // Send simple lock message
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>digitalsolitude → occupied</title>
-          <style>
-            body { 
-              background: #fff; 
-              color: #000; 
-              font-family: 'Courier New', monospace; 
-              font-size: 15px;
-              line-height: 1.6;
-              padding: 40px 20px;
-              margin: 0;
-              max-width: 800px;
-              margin: 0 auto;
-            }
-            .header {
-              margin-bottom: 60px;
-              border-bottom: 1px solid #000;
-              padding-bottom: 20px;
-            }
-            h1 {
-              font-size: 24px;
-              font-weight: normal;
-              letter-spacing: -0.5px;
-              margin-bottom: 10px;
-            }
-            .subtitle {
-              font-size: 13px;
-              color: #666;
-            }
-            .message {
-              margin: 40px 0;
-            }
-            .footer {
-              margin-top: 60px;
-              padding-top: 20px;
-              border-top: 1px solid #000;
-              font-size: 12px;
-              color: #999;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>digitalsolitude</h1>
-            <div class="subtitle">a website for one person only</div>
-          </div>
-
-          <div class="message">
-            <p>this digital space is currently inhabited.</p>
-            
-            <p>someone else is there.</p>
-            
-            <p>come back in a moment.</p>
-          </div>
-          
-          <div class="footer">
-            <p>built with intentional fragility • a meditation on digital solitude</p>
-          </div>
-        </body>
-      </html>
-    `);
-    
-    return;
-  }
-  
-  // Add this visitor as active
-  activeVisitors.set(visitorId, Date.now());
   
   next();
 });
@@ -206,6 +202,7 @@ app.get('/', (req, res) => {
             font-size: 14px;
             font-weight: normal;
             margin-bottom: 15px;
+            color: #666;
             letter-spacing: 0.3px;
           }
           
@@ -280,8 +277,14 @@ app.get('/', (req, res) => {
      ╰─────────────────────────────────────╯
         </div>
 
+        <div id="failure-notice" style="display: none; margin: 20px 0; padding: 20px; border: 1px solid #000; background: #f5f5f5; text-align: center;">
+          <h3 style="margin: 0 0 10px 0; font-size: 16px; font-weight: normal;">too many people</h3>
+          <p style="margin: 0; font-size: 14px; color: #666;">there are <span id="people-count">2</span> people on this website.<br>that's one too many.</p>
+          <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">please try again when you're alone.</p>
+        </div>
+
         <div class="content">
-          <p >this website exists in this moment for you alone.</p>
+          <p class="breathe">this website exists in this moment for you alone.</p>
           
           <p>no analytics track your movement<br>
           no cookies remember your visit<br>
@@ -291,21 +294,45 @@ app.get('/', (req, res) => {
           
           <div class="explainer-box">
             <h3>how this works</h3>
-            <p>this website can only be visible by one person at a time.</p>
-            <p>if someone else tries to visit while you're here, they will see a message letting them know the space is occupied, and they can return when you are gone.</p>
+            <p>this website can only hold one person at a time, like a favorite reading chair or a quiet bench in a garden.</p>
+            <p>if someone else tries to visit while you're here, both of you will see a failure message. the website cannot function when there are multiple people—it needs complete solitude to exist.</p>
+            <p>digital solitude requires absolute singularity.</p>
           </div>
           
-          <p >stay as long as you need.</p>
+          <p class="breathe">stay as long as you need.</p>
           
           <p>the website will wait.</p>
         </div>
         
         <div class="footer">
           <p>built with intentional fragility • a meditation on digital solitude</p>
-          <p>concept & code: <a href="www.guillaumeslizewicz.com">Guillaume Slizewicz</a> • 2025</p>
+          <p>concept & code: <a href="#">[artist_name]</a> • 2025</p>
         </div>
         
         <script>
+          // Real-time updates via Server-Sent Events
+          const eventSource = new EventSource('/events');
+          
+          eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const failureNotice = document.getElementById('failure-notice');
+            const content = document.querySelector('.content');
+            const peopleCount = document.getElementById('people-count');
+            
+            if (data.type === 'too_many_people') {
+              // Show failure state
+              failureNotice.style.display = 'block';
+              content.style.display = 'none';
+              peopleCount.textContent = data.count;
+            } else if (data.type === 'count_update' || data.type === 'status') {
+              if (data.count <= 1) {
+                // Back to normal
+                failureNotice.style.display = 'none';
+                content.style.display = 'block';
+              }
+            }
+          };
+          
           // Keep visitor alive while on page
           function sendHeartbeat() {
             fetch('/heartbeat', { method: 'POST' })
@@ -319,12 +346,14 @@ app.get('/', (req, res) => {
           document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
               clearInterval(heartbeat);
+              eventSource.close();
             }
           });
           
           // Stop heartbeat when leaving page
           window.addEventListener('beforeunload', () => {
             clearInterval(heartbeat);
+            eventSource.close();
           });
           
           // Subtle cursor tracking (no data sent anywhere)
