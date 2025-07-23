@@ -4,15 +4,6 @@ const PORT = process.env.PORT || 3000;
 
 let activeVisitors = new Map();
 
-// Health check endpoint (doesn't count as visitor)
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    activeVisitors: activeVisitors.size 
-  });
-});
-
 // Heartbeat endpoint
 app.post('/heartbeat', (req, res) => {
   const visitorId = req.ip + req.headers['user-agent'];
@@ -31,10 +22,10 @@ setInterval(() => {
   }
 }, 5000);
 
-// Track visitors (skip health check and heartbeat)
+// Track visitors 
 app.use((req, res, next) => {
-  // Skip visitor tracking for system endpoints
-  if (req.path === '/health' || req.path === '/heartbeat') {
+  // Skip visitor tracking for heartbeat only
+  if (req.path === '/heartbeat') {
     return next();
   }
   
@@ -43,65 +34,80 @@ app.use((req, res, next) => {
   console.log(`👤 Visitor checking in from ${req.ip}`);
   console.log(`👥 Currently active visitors: ${activeVisitors.size}`);
   
-  // If someone else is currently active, disappear
+  // If someone else is currently active, show graceful lock
   if (activeVisitors.size > 0 && !activeVisitors.has(visitorId)) {
-    console.log('💫 Another soul is already here. Disappearing...');
-    console.log('🌫️ Fading away...');
+    console.log('🔒 Space is occupied. Showing lock message...');
     
-    // Send disappearance message
-    res.status(503).send(`
+    // Send simple lock message
+    res.send(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>digitalsolitude → disappearing</title>
+          <title>digitalsolitude → occupied</title>
           <style>
             body { 
               background: #fff; 
               color: #000; 
               font-family: 'Courier New', monospace; 
-              font-size: 14px;
-              line-height: 1.4;
-              padding: 20px;
+              font-size: 15px;
+              line-height: 1.6;
+              padding: 40px 20px;
               margin: 0;
-              animation: fadeOut 2s ease-out;
+              max-width: 800px;
+              margin: 0 auto;
             }
-            @keyframes fadeOut {
-              0% { opacity: 1; transform: scale(1); }
-              100% { opacity: 0; transform: scale(0.98); }
+            .header {
+              margin-bottom: 60px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 20px;
             }
-            .ascii {
-              white-space: pre;
-              font-family: monospace;
-              font-size: 10px;
-              margin: 20px 0;
+            h1 {
+              font-size: 24px;
+              font-weight: normal;
+              letter-spacing: -0.5px;
+              margin-bottom: 10px;
+            }
+            .subtitle {
+              font-size: 13px;
+              color: #666;
+            }
+            .message {
+              margin: 40px 0;
+              animation: breathe 4s ease-in-out infinite;
+            }
+            @keyframes breathe {
+              0%, 100% { opacity: 0.9; }
+              50% { opacity: 1; }
+            }
+            .footer {
+              margin-top: 60px;
+              padding-top: 20px;
+              border-top: 1px solid #000;
+              font-size: 12px;
+              color: #999;
             }
           </style>
         </head>
         <body>
-          <div class="ascii">
-    ╭─────────────────────────────────────╮
-    │         SOLITUDE OCCUPIED           │
-    │                                     │
-    │  > another presence detected        │
-    │  > this space is taken              │
-    │  > gracefully disappearing...       │
-    │                                     │
-    │  someone else is having their       │
-    │  quiet moment here                  │
-    │                                     │
-    │  recreating in 3 seconds...         │
-    ╰─────────────────────────────────────╯
+          <div class="header">
+            <h1>digitalsolitude</h1>
+            <div class="subtitle">a website for one person only</div>
           </div>
-          <p>───────────────────────────────────</p>
-          <p>digitalsolitude.exe is fading away</p>
+
+          <div class="message">
+            <p>this digital space is currently inhabited.</p>
+            
+            <p>someone else is having their quiet moment here.</p>
+            
+            <p>come back in a moment.</p>
+          </div>
+          
+          <div class="footer">
+            <p>built with intentional fragility • a meditation on digital solitude</p>
+          </div>
         </body>
       </html>
     `);
-    
-    // Disappear gracefully after 2 seconds
-    setTimeout(() => {
-      process.exit(0);
-    }, 2000);
     
     return;
   }
