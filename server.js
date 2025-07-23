@@ -4,7 +4,7 @@ const PORT = process.env.PORT || 3000;
 
 let activeVisitors = new Map();
 
-// Server-sent events for real-time updates
+// Server-sent events for visitor tracking
 app.get('/events', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -20,54 +20,13 @@ app.get('/events', (req, res) => {
     eventStream: res 
   });
   
-  // Send initial state
-  res.write(`data: ${JSON.stringify({ 
-    type: 'status', 
-    count: activeVisitors.size 
-  })}\n\n`);
-  
-  // If there are now 2+ people, everyone fails
-  if (activeVisitors.size >= 2) {
-    broadcastFailure();
-  }
+  console.log(`📡 Event stream connected. Active visitors: ${activeVisitors.size}`);
   
   req.on('close', () => {
     activeVisitors.delete(visitorId);
-    broadcastUpdate();
+    console.log(`📡 Event stream closed. Active visitors: ${activeVisitors.size}`);
   });
 });
-
-// Broadcast failure to everyone
-function broadcastFailure() {
-  const message = `data: ${JSON.stringify({ 
-    type: 'too_many_people', 
-    count: activeVisitors.size 
-  })}\n\n`;
-  
-  for (const [visitorId, visitor] of activeVisitors.entries()) {
-    try {
-      visitor.eventStream.write(message);
-    } catch (e) {
-      activeVisitors.delete(visitorId);
-    }
-  }
-}
-
-// Broadcast updates to all active visitors
-function broadcastUpdate() {
-  const message = `data: ${JSON.stringify({ 
-    type: 'count_update', 
-    count: activeVisitors.size 
-  })}\n\n`;
-  
-  for (const [visitorId, visitor] of activeVisitors.entries()) {
-    try {
-      visitor.eventStream.write(message);
-    } catch (e) {
-      activeVisitors.delete(visitorId);
-    }
-  }
-}
 
 // Heartbeat endpoint
 app.post('/heartbeat', (req, res) => {
@@ -81,18 +40,12 @@ app.post('/heartbeat', (req, res) => {
 // Clean up inactive visitors every 10 seconds
 setInterval(() => {
   const now = Date.now();
-  let changed = false;
   
   for (const [visitorId, visitor] of activeVisitors.entries()) {
     if (now - visitor.lastSeen > 10000) { // 10 seconds without heartbeat = gone
       activeVisitors.delete(visitorId);
       console.log(`👋 Visitor ${visitorId.slice(0, 10)}... left`);
-      changed = true;
     }
-  }
-  
-  if (changed) {
-    broadcastUpdate();
   }
 }, 5000);
 
@@ -105,6 +58,97 @@ app.use((req, res, next) => {
   
   const visitorId = req.ip + req.headers['user-agent'];
   console.log(`👤 Visitor checking in from ${req.ip}`);
+  console.log(`👥 Currently active: ${activeVisitors.size}`);
+  
+  // If there are already active visitors, show failure to everyone
+  if (activeVisitors.size > 0) {
+    console.log('💥 Too many people detected. Showing failure to everyone...');
+    
+    // Send failure message
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>digitalsolitude → too many people</title>
+          <style>
+            body { 
+              background: #fff; 
+              color: #000; 
+              font-family: 'Courier New', monospace; 
+              font-size: 15px;
+              line-height: 1.6;
+              padding: 40px 20px;
+              margin: 0;
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            .header {
+              margin-bottom: 60px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 20px;
+            }
+            h1 {
+              font-size: 24px;
+              font-weight: normal;
+              letter-spacing: -0.5px;
+              margin-bottom: 10px;
+            }
+            .subtitle {
+              font-size: 13px;
+              color: #666;
+            }
+            .failure {
+              margin: 40px 0;
+              padding: 20px;
+              border: 1px solid #000;
+              background: #f5f5f5;
+              text-align: center;
+            }
+            .failure h3 {
+              margin: 0 0 10px 0;
+              font-size: 16px;
+              font-weight: normal;
+            }
+            .footer {
+              margin-top: 60px;
+              padding-top: 20px;
+              border-top: 1px solid #000;
+              font-size: 12px;
+              color: #999;
+            }
+            a {
+              color: #000;
+              text-decoration: none;
+              border-bottom: 1px solid #000;
+            }
+            a:hover {
+              background: #000;
+              color: #fff;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>digitalsolitude</h1>
+            <div class="subtitle">a website for one person only</div>
+          </div>
+
+          <div class="failure">
+            <h3>too many people</h3>
+            <p>there are multiple people on this website.<br>that's one too many.</p>
+            <p style="margin-top: 15px; font-size: 12px; color: #999;">please try again when you're alone.</p>
+          </div>
+          
+          <div class="footer">
+            <p>built with intentional fragility • a meditation on digital solitude</p>
+            <p>concept & code: <a href="https://www.guillaumeslizewicz.com">Guillaume Slizewicz</a> • 2025</p>
+          </div>
+        </body>
+      </html>
+    `);
+    
+    return;
+  }
   
   next();
 });
@@ -277,14 +321,8 @@ app.get('/', (req, res) => {
      ╰─────────────────────────────────────╯
         </div>
 
-        <div id="failure-notice" style="display: none; margin: 20px 0; padding: 20px; border: 1px solid #000; background: #f5f5f5; text-align: center;">
-          <h3 style="margin: 0 0 10px 0; font-size: 16px; font-weight: normal;">too many people</h3>
-          <p style="margin: 0; font-size: 14px; color: #666;">there are <span id="people-count">2</span> people on this website.<br>that's one too many.</p>
-          <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">please try again when you're alone.</p>
-        </div>
-
         <div class="content">
-          <p class="breathe">this website exists in this moment for you alone.</p>
+          <p >this website exists in this moment for you alone.</p>
           
           <p>no analytics track your movement<br>
           no cookies remember your visit<br>
@@ -294,44 +332,23 @@ app.get('/', (req, res) => {
           
           <div class="explainer-box">
             <h3>how this works</h3>
-            <p>this website can only hold one person at a time, like a favorite reading chair or a quiet bench in a garden.</p>
+            <p>this website can only be visible per person at a time.</p>
             <p>if someone else tries to visit while you're here, both of you will see a failure message. the website cannot function when there are multiple people—it needs complete solitude to exist.</p>
-            <p>digital solitude requires absolute singularity.</p>
           </div>
           
-          <p class="breathe">stay as long as you need.</p>
+          <p>stay as long as you need.</p>
           
           <p>the website will wait.</p>
         </div>
         
         <div class="footer">
           <p>built with intentional fragility • a meditation on digital solitude</p>
-          <p>concept & code: <a href="#">[artist_name]</a> • 2025</p>
+          <p>concept & code: <a href="https://www.guillaumeslizewicz.com">Guillaume Slizewicz</a> • 2025</p>
         </div>
         
         <script>
-          // Real-time updates via Server-Sent Events
+          // Connect to events stream (for heartbeat tracking)
           const eventSource = new EventSource('/events');
-          
-          eventSource.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            const failureNotice = document.getElementById('failure-notice');
-            const content = document.querySelector('.content');
-            const peopleCount = document.getElementById('people-count');
-            
-            if (data.type === 'too_many_people') {
-              // Show failure state
-              failureNotice.style.display = 'block';
-              content.style.display = 'none';
-              peopleCount.textContent = data.count;
-            } else if (data.type === 'count_update' || data.type === 'status') {
-              if (data.count <= 1) {
-                // Back to normal
-                failureNotice.style.display = 'none';
-                content.style.display = 'block';
-              }
-            }
-          };
           
           // Keep visitor alive while on page
           function sendHeartbeat() {
