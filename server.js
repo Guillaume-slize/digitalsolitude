@@ -266,8 +266,19 @@ app.get('/', (req, res) => {
             color: #fff;
           }
           
+          .status-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 12px;
+            font-size: 11px;
+            color: #666;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+          }
+          
 
-
+          
           @media (max-width: 600px) {
             body { padding: 5px 5px; font-size: 16px; }
             .ascii-art { font-size: 16px; }
@@ -452,7 +463,8 @@ app.get('/', (req, res) => {
           <p>built by <a href="https://www.guillaumeslizewicz.com">Guillaume Slizewicz</a> • 2025</p>
         </div>
         
-
+        <div id="status" class="status-indicator disconnected">connecting...</div>
+        
         <script>
           // Generate a unique session ID for this visitor
           const sessionId = Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
