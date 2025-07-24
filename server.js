@@ -9,16 +9,30 @@ app.get('/events', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive'
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no' // Disable Nginx buffering if behind proxy
   });
   
-  const visitorId = req.ip + req.headers['user-agent'];
+  // Get session ID from query parameter
+  const sessionId = req.query.sessionId;
+  if (!sessionId) {
+    res.write(`data: ${JSON.stringify({ type: 'error', message: 'No session ID' })}\n\n`);
+    res.end();
+    return;
+  }
   
-  // Store this connection
+  const visitorId = sessionId; // Use session ID as the unique identifier
+  
+  // Store this connection - this is the ONLY place we add visitors
   activeVisitors.set(visitorId, { 
     lastSeen: Date.now(), 
-    eventStream: res 
+    eventStream: res,
+    ip: req.ip,
+    userAgent: req.headers['user-agent']
   });
+  
+  console.log(`👤 New SSE connection established for session ${visitorId}`);
+  console.log(`👥 Active visitors: ${activeVisitors.size}`);
   
   // Send initial state
   res.write(`data: ${JSON.stringify({ 
@@ -26,13 +40,29 @@ app.get('/events', (req, res) => {
     count: activeVisitors.size 
   })}\n\n`);
   
-  // If there are now 2+ people, everyone fails
+  // If there are now 2+ people, everyone fails (including the new visitor)
   if (activeVisitors.size >= 2) {
     broadcastFailure();
   }
   
+  // Server-side keepalive to detect dead connections
+  const keepAliveInterval = setInterval(() => {
+    try {
+      res.write(`:keepalive\n\n`);
+    } catch (e) {
+      // Connection is dead
+      clearInterval(keepAliveInterval);
+      activeVisitors.delete(visitorId);
+      console.log(`👋 Dead connection removed for session ${visitorId}`);
+      broadcastUpdate();
+    }
+  }, 30000); // Every 30 seconds
+  
+  // Clean up on connection close
   req.on('close', () => {
+    clearInterval(keepAliveInterval);
     activeVisitors.delete(visitorId);
+    console.log(`👋 SSE connection closed for session ${visitorId}`);
     broadcastUpdate();
   });
 });
@@ -44,10 +74,13 @@ function broadcastFailure() {
     count: activeVisitors.size 
   })}\n\n`;
   
+  console.log(`🚫 Broadcasting failure to ${activeVisitors.size} visitors`);
+  
   for (const [visitorId, visitor] of activeVisitors.entries()) {
     try {
       visitor.eventStream.write(message);
     } catch (e) {
+      console.log(`Failed to send to ${visitorId}, removing...`);
       activeVisitors.delete(visitorId);
     }
   }
@@ -60,23 +93,33 @@ function broadcastUpdate() {
     count: activeVisitors.size 
   })}\n\n`;
   
+  console.log(`📢 Broadcasting update: ${activeVisitors.size} visitors`);
+  
   for (const [visitorId, visitor] of activeVisitors.entries()) {
     try {
       visitor.eventStream.write(message);
     } catch (e) {
+      console.log(`Failed to send to ${visitorId}, removing...`);
       activeVisitors.delete(visitorId);
     }
   }
 }
 
 // Heartbeat endpoint
-app.post('/heartbeat', (req, res) => {
-  const visitorId = req.ip + req.headers['user-agent'];
+app.post('/heartbeat', express.json(), (req, res) => {
+  const sessionId = req.body.sessionId;
   
-  if (activeVisitors.has(visitorId)) {
-    activeVisitors.get(visitorId).lastSeen = Date.now();
+  if (!sessionId) {
+    return res.status(400).json({ error: 'No session ID' });
   }
-  res.json({ status: 'alive' });
+  
+  if (activeVisitors.has(sessionId)) {
+    activeVisitors.get(sessionId).lastSeen = Date.now();
+    res.json({ status: 'alive', count: activeVisitors.size });
+  } else {
+    // Visitor not in active list - they need to reconnect
+    res.json({ status: 'reconnect_needed', count: activeVisitors.size });
+  }
 });
 
 // Clean up inactive visitors every 5 seconds
@@ -85,9 +128,9 @@ setInterval(() => {
   let changed = false;
   
   for (const [visitorId, visitor] of activeVisitors.entries()) {
-    if (now - visitor.lastSeen > 10000) { // 10 seconds without heartbeat = gone
+    if (now - visitor.lastSeen > 15000) { // 15 seconds without heartbeat = gone
       activeVisitors.delete(visitorId);
-      console.log(`👋 Visitor ${visitorId.slice(0, 10)}... left`);
+      console.log(`👋 Inactive visitor ${visitorId} removed`);
       changed = true;
     }
   }
@@ -97,29 +140,10 @@ setInterval(() => {
   }
 }, 5000);
 
-// Track visitors 
-app.use((req, res, next) => {
-  // Skip visitor tracking for heartbeat and events
-  if (req.path === '/heartbeat' || req.path === '/events') {
-    return next();
-  }
-
-  const visitorId = req.ip + req.headers['user-agent'];
-  
-  console.log(`👤 Visitor checking in from ${req.ip}`);
-  console.log(`👥 Currently active visitors: ${activeVisitors.size}`);
-  
-  // Add this visitor as active (this is the key change - no longer blocking here)
-  activeVisitors.set(visitorId, { 
-    lastSeen: Date.now(), 
-    eventStream: null 
-  });
-
-  next();
-});
-
 // The main website
 app.get('/', (req, res) => {
+  console.log(`🌐 Page request from ${req.ip}`);
+  
   res.send(`
     <!DOCTYPE html>
     <html>
@@ -174,11 +198,9 @@ app.get('/', (req, res) => {
           
           .content p {
             margin-bottom: 10px;
-
           }
           
           .explainer-box {
-            /* Gentle wave border */
             padding: 25px;
             margin: 30px 0;
             background: #fafafa;
@@ -216,9 +238,6 @@ app.get('/', (req, res) => {
             letter-spacing: 0.3px;
           }
           
-
-          
-          /* Gentle presence */
           .presence {
             animation: presence 6s ease-in-out infinite;
           }
@@ -247,37 +266,66 @@ app.get('/', (req, res) => {
             color: #fff;
           }
           
+          .status-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 12px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #666;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+          }
+          
+          .status-indicator:hover {
+            opacity: 1;
+          }
+          
+          .status-indicator.connected {
+            border-color: #4CAF50;
+            color: #4CAF50;
+          }
+          
+          .status-indicator.disconnected {
+            border-color: #f44336;
+            color: #f44336;
+          }
+          
           @media (max-width: 600px) {
             body { padding: 5px 5px; font-size: 16px; }
             .ascii-art { font-size: 16px; }
+            .status-indicator { display: none; }
           }
-        /* layered ASCII animation */
-        .ascii-stack      { position: relative; display: inline-block; }
-        .ascii-stack .ascii {
-          position: absolute;             /* pile the layers */
-          top: 0; left: 0; margin: 0;
-          font-family: "Courier New", monospace;
-          white-space: pre;
-          animation: pulse 8s ease-in-out infinite;
-          will-change: opacity, filter;   /* helps to smooth the first seconds */
-          transform: translateZ(0);       /* forces GPU compositing */
-        }
-        .ascii.d0 {  mask-image: linear-gradient(50deg, transparent 0%, #000 30%, #000 70%, transparent 100%); filter: blur(0   ); animation-delay: 0s; mix-blend-mode: multiply; }
-        .ascii.d1 { mask-image: linear-gradient(120deg, transparent 0%, #000 30%, #000 70%, transparent 100%); filter: blur(0.2px); opacity: .90; animation-delay: 1s;mix-blend-mode: screen;  }
-        .ascii.d2 { mask-image: linear-gradient(100deg, transparent 0%, #000 20%, #000 80%, transparent 100%); filter: blur(0.4px); opacity: .85; animation-delay: 2s; }
-        .ascii.d3 {  mask-image: radial-gradient(circle at 70% 30%, #000 60%, transparent 100%); filter: blur(0.6px); opacity: .80; animation-delay: 3s; }
-        .ascii.d4 { mask-image: linear-gradient(to right, transparent 0%, #000 15%, #000 85%, transparent 100%); filter: blur(1.2px); opacity: .75; animation-delay: 4s; }
-        .ascii-stack .ascii:first-child{
-          position: static;         /* restores height */
-          visibility: hidden;       /* removes it from view */
-          animation: none;          /* stops the pulse */
-        }
-
-        @keyframes pulse {
-          0%,100% { opacity: .35; }
-          50%     { opacity: 1;  }
-        }
           
+          /* layered ASCII animation */
+          .ascii-stack { position: relative; display: inline-block; }
+          .ascii-stack .ascii {
+            position: absolute;
+            top: 0; left: 0; margin: 0;
+            font-family: "Courier New", monospace;
+            white-space: pre;
+            animation: pulse 8s ease-in-out infinite;
+            will-change: opacity, filter;
+            transform: translateZ(0);
+          }
+          .ascii.d0 { mask-image: linear-gradient(50deg, transparent 0%, #000 30%, #000 70%, transparent 100%); filter: blur(0); animation-delay: 0s; mix-blend-mode: multiply; }
+          .ascii.d1 { mask-image: linear-gradient(120deg, transparent 0%, #000 30%, #000 70%, transparent 100%); filter: blur(0.2px); opacity: .90; animation-delay: 1s; mix-blend-mode: screen; }
+          .ascii.d2 { mask-image: linear-gradient(100deg, transparent 0%, #000 20%, #000 80%, transparent 100%); filter: blur(0.4px); opacity: .85; animation-delay: 2s; }
+          .ascii.d3 { mask-image: radial-gradient(circle at 70% 30%, #000 60%, transparent 100%); filter: blur(0.6px); opacity: .80; animation-delay: 3s; }
+          .ascii.d4 { mask-image: linear-gradient(to right, transparent 0%, #000 15%, #000 85%, transparent 100%); filter: blur(1.2px); opacity: .75; animation-delay: 4s; }
+          .ascii-stack .ascii:first-child{
+            position: static;
+            visibility: hidden;
+            animation: none;
+          }
+
+          @keyframes pulse {
+            0%,100% { opacity: .35; }
+            50% { opacity: 1; }
+          }
         </style>
       </head>
       <body>
@@ -285,15 +333,17 @@ app.get('/', (req, res) => {
           <h1>digitalsolitude</h1>
           <div class="subtitle">a website for one person only</div>
         </div>
+        
         <div id="failure-notice" style="display: none; margin: 20px 0; padding: 20px; border: 1px solid #000; background: #f5f5f5; text-align: center;">
           <h3 style="margin: 0 0 10px 0; font-size: 16px; font-weight: normal;">too many people</h3>
-          <p style="margin: 0; font-size: 14px; color: #666;">Only one person can use this site. If more than one user connects, it fails for everyone.
+          <p style="margin: 0; font-size: 14px; color: #666;">Only one person can use this site. If more than one user connects, it fails for everyone.</p>
+          <p style="margin: 0; font-size: 14px; color: #666;">Current visitors: <span id="people-count">2</span></p>
           <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">please try again later.</p>
         </div>
+        
         <div class="content">
-
           <div class="ascii-art">
-          <div class="ascii-stack">
+            <div class="ascii-stack">
 <pre class="ascii d0">╭─────────────────────────────────────╮
 │         this website exists         │
 │            in this moment           │
@@ -413,19 +463,14 @@ app.get('/', (req, res) => {
 │        corner of the internet       │
 │        simply by being here.        │
 ╰─────────────────────────────────────╯</pre>
-</div>
-        </div>
-
-        
-
+            </div>
+          </div>
 
           <div class="explainer-box">
             <h3>how this works</h3>
             <p>this website can only be visible per person at a time.</p>
             <p>if someone else tries to visit while you're here, both of you will see a failure message. the website cannot function when there are multiple people. it needs complete solitude to exist.</p>
           </div>
-          
-
         </div>
         
         <div class="footer">
@@ -433,51 +478,152 @@ app.get('/', (req, res) => {
           <p>built by <a href="https://www.guillaumeslizewicz.com">Guillaume Slizewicz</a> • 2025</p>
         </div>
         
+        <div id="status" class="status-indicator disconnected">connecting...</div>
+        
         <script>
-          // Real-time updates via Server-Sent Events
-          const eventSource = new EventSource('/events');
+          // Generate a unique session ID for this visitor
+          const sessionId = Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
           
-          eventSource.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            const failureNotice = document.getElementById('failure-notice');
-            const content = document.querySelector('.content');
-            const peopleCount = document.getElementById('people-count');
-            
-            if (data.type === 'too_many_people') {
-              // Show failure state
-              failureNotice.style.display = 'block';
-              content.style.display = 'none';
-              peopleCount.textContent = data.count;
-            } else if (data.type === 'count_update' || data.type === 'status') {
-              if (data.count <= 1) {
-                // Back to normal
-                failureNotice.style.display = 'none';
-                content.style.display = 'block';
-              }
-            }
-          };
+          let eventSource = null;
+          let heartbeatInterval = null;
+          let reconnectTimeout = null;
+          let isConnected = false;
           
-          // Keep visitor alive while on page
-          function sendHeartbeat() {
-            fetch('/heartbeat', { method: 'POST' })
-              .catch(() => {}); // Ignore errors silently
+          function updateStatus(text, connected) {
+            const status = document.getElementById('status');
+            status.textContent = text;
+            status.className = 'status-indicator ' + (connected ? 'connected' : 'disconnected');
           }
           
-          // Send heartbeat every 5 seconds while page is active
-          const heartbeat = setInterval(sendHeartbeat, 5000);
+          function connect() {
+            // Clean up any existing connection
+            if (eventSource) {
+              eventSource.close();
+            }
+            
+            updateStatus('connecting...', false);
+            
+            // Establish SSE connection with session ID
+            eventSource = new EventSource('/events?sessionId=' + sessionId);
+            
+            eventSource.onopen = function() {
+              console.log('Connected to server');
+              isConnected = true;
+              updateStatus('connected', true);
+              
+              // Start heartbeat
+              if (heartbeatInterval) clearInterval(heartbeatInterval);
+              heartbeatInterval = setInterval(sendHeartbeat, 5000);
+            };
+            
+            eventSource.onmessage = function(event) {
+              const data = JSON.parse(event.data);
+              const failureNotice = document.getElementById('failure-notice');
+              const content = document.querySelector('.content');
+              const peopleCount = document.getElementById('people-count');
+              
+              if (data.type === 'too_many_people') {
+                // Show failure state
+                failureNotice.style.display = 'block';
+                content.style.display = 'none';
+                peopleCount.textContent = data.count;
+              } else if (data.type === 'count_update' || data.type === 'status') {
+                if (data.count <= 1) {
+                  // Back to normal
+                  failureNotice.style.display = 'none';
+                  content.style.display = 'block';
+                } else {
+                  // Still too many people
+                  failureNotice.style.display = 'block';
+                  content.style.display = 'none';
+                  peopleCount.textContent = data.count;
+                }
+              }
+            };
+            
+            eventSource.onerror = function(e) {
+              console.error('SSE connection error', e);
+              isConnected = false;
+              updateStatus('disconnected', false);
+              
+              if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+              }
+              
+              // Clear heartbeat
+              if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+              }
+              
+              // Try to reconnect after a delay
+              if (reconnectTimeout) clearTimeout(reconnectTimeout);
+              reconnectTimeout = setTimeout(() => {
+                console.log('Attempting to reconnect...');
+                connect();
+              }, 3000);
+            };
+          }
           
-          // Stop heartbeat when page is hidden/closed
+          // Send heartbeat
+          async function sendHeartbeat() {
+            try {
+              const response = await fetch('/heartbeat', { 
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ sessionId: sessionId })
+              });
+              
+              const data = await response.json();
+              
+              if (data.status === 'reconnect_needed') {
+                console.log('Server says reconnect needed');
+                connect();
+              }
+            } catch (e) {
+              console.error('Heartbeat failed:', e);
+            }
+          }
+          
+          // Handle page visibility changes
           document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-              clearInterval(heartbeat);
-              eventSource.close();
+              // Page is hidden - disconnect
+              console.log('Page hidden, disconnecting...');
+              if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+              }
+              if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+              }
+              if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+              }
+              updateStatus('paused', false);
+            } else {
+              // Page is visible again - reconnect
+              console.log('Page visible, reconnecting...');
+              connect();
             }
           });
           
-          // Stop heartbeat when leaving page
+          // Clean up when leaving the page
           window.addEventListener('beforeunload', () => {
-            clearInterval(heartbeat);
-            eventSource.close();
+            if (eventSource) {
+              eventSource.close();
+            }
+            if (heartbeatInterval) {
+              clearInterval(heartbeatInterval);
+            }
+            if (reconnectTimeout) {
+              clearTimeout(reconnectTimeout);
+            }
           });
           
           // Subtle cursor tracking (no data sent anywhere)
@@ -486,6 +632,9 @@ app.get('/', (req, res) => {
             mouseTrail.push({x: e.clientX, y: e.clientY, time: Date.now()});
             if (mouseTrail.length > 10) mouseTrail.shift();
           });
+          
+          // Start the connection
+          connect();
         </script>
       </body>
     </html>
@@ -502,5 +651,21 @@ app.listen(PORT, () => {
 // Handle graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n🌫️ digitalsolitude fading away...');
+  
+  // Send final message to all connected visitors
+  const message = `data: ${JSON.stringify({ 
+    type: 'server_shutdown', 
+    message: 'Server is shutting down' 
+  })}\n\n`;
+  
+  for (const [visitorId, visitor] of activeVisitors.entries()) {
+    try {
+      visitor.eventStream.write(message);
+      visitor.eventStream.end();
+    } catch (e) {
+      // Ignore errors during shutdown
+    }
+  }
+  
   process.exit(0);
 });
